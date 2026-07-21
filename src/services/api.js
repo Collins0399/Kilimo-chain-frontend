@@ -1,4 +1,4 @@
-const BASE_URL = 'http://51.15.243.105:30746';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://51.15.243.105:30746';
 
 // Helper to construct query params
 const queryParams = (params) => {
