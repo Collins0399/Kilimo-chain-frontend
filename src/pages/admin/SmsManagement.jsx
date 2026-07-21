@@ -205,8 +205,6 @@ export default function SmsManagement() {
                   <option value="FARMER_VERIFICATION">Farmer Verification</option>
                   <option value="PRICE_UPDATE">Market Price Updates</option>
                   <option value="PURCHASE_REQUEST">New Buyer Requests</option>
-                  <option value="REQUEST_APPROVED">Request Approvals</option>
-                  <option value="REQUEST_REJECTED">Request Rejections</option>
                   <option value="MPESA_PAYMENT">M-Pesa Payments</option>
                   <option value="LOW_STOCK">Low Stock Alerts</option>
                   <option value="SOLD_OUT">Harvest Sold Out</option>
