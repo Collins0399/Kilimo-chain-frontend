@@ -25,8 +25,6 @@ import PaymentAudit from './pages/admin/PaymentAudit';
 import Notifications from './pages/admin/Notifications';
 import SmsManagement from './pages/admin/SmsManagement';
 
-// Simulator
-import SmsUssdSimulator from './pages/simulator/SmsUssdSimulator';
 import LandingPage from './pages/LandingPage';
 
 import { api } from './services/api';
@@ -155,7 +153,7 @@ function ProtectedLayout({ children, requiredRole }) {
       </aside>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Navbar />
         <main className="main-content">
           {children}
@@ -238,8 +236,6 @@ export default function App() {
           </ProtectedLayout>
         } />
 
-        {/* Public USSD/SMS Simulator Route */}
-        <Route path="/simulator" element={<SmsUssdSimulator />} />
 
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

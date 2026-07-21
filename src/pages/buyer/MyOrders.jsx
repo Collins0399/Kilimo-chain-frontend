@@ -140,7 +140,7 @@ export default function MyOrders() {
 
             // Show payment trigger if status is accepted/approved/payment_pending/pending and not paid yet
             // Wait, looking at backend logic, if request is accepted/approved by farmer/admin, status becomes ACCEPTED/APPROVED
-            const canPay = order.status === 'APPROVED' || order.status === 'PAYMENT_PENDING' || order.status === 'ACCEPTED';
+            const canPay = order.status === 'APPROVED' || order.status === 'PAYMENT_PENDING' || order.status === 'ACCEPTED' || order.status === 'PENDING';
 
             return (
               <div key={order.id} className="glass-card green-accent" style={styles.orderCard}>

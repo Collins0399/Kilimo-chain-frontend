@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, User, Mail, Phone, Key, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { api } from '../services/api';
+import LandingNavbar from '../components/LandingNavbar';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -41,12 +42,15 @@ export default function Register() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.glowGreen}></div>
-      <div style={styles.glowGold}></div>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f8fafc', width: '100vw', overflowX: 'hidden' }}>
+      <LandingNavbar />
+      
+      <div style={styles.container}>
+        <div style={styles.glowGreen}></div>
+        <div style={styles.glowGold}></div>
 
-      <div style={styles.card} className="glass-panel">
-        <div style={styles.backToLogin}>
+        <div style={styles.card} className="glass-panel">
+          <div style={styles.backToLogin}>
           <Link to="/login" style={styles.backLink}>
             <ArrowLeft size={16} />
             <span>Back to Login</span>
@@ -83,7 +87,7 @@ export default function Register() {
                 required
                 className="form-control"
                 style={styles.inputWithIcon}
-                placeholder="John Doe"
+                placeholder="Full Name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
               />
@@ -100,12 +104,12 @@ export default function Register() {
                 required
                 className="form-control"
                 style={styles.inputWithIcon}
-                placeholder="254712345678"
+                placeholder="Phone Number"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
               />
             </div>
-            <span style={styles.inputHelp}>Must start with 254 (e.g. 254700112233)</span>
+            <span style={styles.inputHelp}>Must start with 254 </span>
           </div>
 
           <div className="form-group">
@@ -118,7 +122,7 @@ export default function Register() {
                 required
                 className="form-control"
                 style={styles.inputWithIcon}
-                placeholder="john@example.com"
+                placeholder="Email Address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -136,7 +140,7 @@ export default function Register() {
                 minLength={6}
                 className="form-control"
                 style={styles.inputWithIcon}
-                placeholder="Min 6 characters"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -162,6 +166,7 @@ export default function Register() {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
@@ -170,9 +175,9 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '100vh',
-    width: '100vw',
-    backgroundColor: 'var(--bg-primary)',
+    minHeight: 'calc(100vh - 70px)',
+    width: '100%',
+    backgroundColor: '#f8fafc',
     position: 'relative',
     overflow: 'hidden',
     padding: '2rem',

@@ -5,6 +5,7 @@ import {
   MessageSquare, TrendingUp, Users, ArrowRight, BookOpen, Check 
 } from 'lucide-react';
 import { api } from '../services/api';
+import LandingNavbar from '../components/LandingNavbar';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -16,23 +17,16 @@ export default function LandingPage() {
     fetchPrices();
   }, []);
 
-  const fetchPrices = async () => {
+  const fetchPrices = () => {
     setLoadingPrices(true);
-    try {
-      const data = await api.marketPrices.getAll();
-      setPrices(Array.isArray(data) ? data.slice(0, 4) : []);
-    } catch (e) {
-      console.error(e);
-      // Fallback dummy prices for demonstration
-      setPrices([
-        { id: 1, crop_name: 'Maize', price_per_kg: '55', location: 'Nyeri', trend: 'UP' },
-        { id: 2, crop_name: 'Beans', price_per_kg: '110', location: 'Meru', trend: 'STABLE' },
-        { id: 3, crop_name: 'Rice', price_per_kg: '150', location: 'Mwea', trend: 'UP' },
-        { id: 4, crop_name: 'Wheat', price_per_kg: '85', location: 'Narok', trend: 'DOWN' },
-      ]);
-    } finally {
-      setLoadingPrices(false);
-    }
+    // Display dummy prices for demonstration
+    setPrices([
+      { id: 1, crop_name: 'Maize', price_per_kg: '55', location: 'Nyeri', trend: 'UP' },
+      { id: 2, crop_name: 'Beans', price_per_kg: '110', location: 'Meru', trend: 'STABLE' },
+      { id: 3, crop_name: 'Rice', price_per_kg: '150', location: 'Mwea', trend: 'UP' },
+      { id: 4, crop_name: 'Wheat', price_per_kg: '85', location: 'Narok', trend: 'DOWN' },
+    ]);
+    setLoadingPrices(false);
   };
 
   const getStakeholderData = () => {
@@ -44,7 +38,7 @@ export default function LandingPage() {
           desc: 'Farmers can list produce, track requests, update prices, and receive automatic warnings directly via USSD/SMS offline gateways.',
           points: [
             'Instant registration using any basic feature phone',
-            'Easy crop harvesting registration by dialing *384*9001#',
+            'Easy crop harvesting registration by dialing *710*33334#',
             'Automated SMS notifications for incoming buyer requests',
             'Real-time verification from local cooperative managers'
           ],
@@ -86,28 +80,7 @@ export default function LandingPage() {
   return (
     <div style={styles.lpWrapper}>
       {/* Navigation Header */}
-      <nav style={styles.nav}>
-        <div style={styles.navContainer}>
-          <div style={styles.logoGroup} onClick={() => navigate('/')}>
-            <div style={styles.logoIcon}>
-              <Sprout size={22} style={{ color: '#fff' }} />
-            </div>
-            <span style={styles.logoText}>Kilimo<span style={{ color: '#15803d' }}>Chain</span></span>
-          </div>
-
-          <div style={styles.navLinks}>
-            <a href="#about" style={styles.navLink}>About</a>
-            <a href="#stakeholders" style={styles.navLink}>Stakeholders</a>
-            <a href="#prices" style={styles.navLink}>Market Prices</a>
-            <Link to="/simulator" style={styles.navLink}>USSD Simulator</Link>
-          </div>
-
-          <div style={styles.authGroup}>
-            <Link to="/login" style={styles.btnLogin}>Log In</Link>
-            <Link to="/register" style={styles.btnRegister}>Register As Buyer</Link>
-          </div>
-        </div>
-      </nav>
+      <LandingNavbar />
 
       {/* Hero Section */}
       <header style={styles.heroSection}>
@@ -142,7 +115,7 @@ export default function LandingPage() {
                 <Smartphone size={20} style={{ color: '#15803d' }} />
                 <div>
                   <h4 style={styles.metricCardTitle}>Offline First</h4>
-                  <p style={styles.metricCardText}>USSD Code *384*9001#</p>
+                  <p style={styles.metricCardText}>USSD Code *710*33334#</p>
                 </div>
               </div>
               <div style={styles.metricCard}>
@@ -390,10 +363,10 @@ export default function LandingPage() {
             Whether you want to source Grade-A agricultural produce or list harvests offline, Kilimo-Chain is the answer. Join today!
           </p>
           <div style={styles.ctaActions}>
-            <Link to="/simulator" style={styles.btnCtaFarmer}>
+            <div style={styles.btnCtaFarmer}>
               <Smartphone size={16} />
-              <span>Dial USSD Simulator</span>
-            </Link>
+              <span>USSD Code: *710*33334#</span>
+            </div>
             <Link to="/register" style={styles.btnCtaBuyer}>
               <span>Register as Buyer</span>
               <ArrowRight size={16} />
@@ -416,15 +389,15 @@ export default function LandingPage() {
               Connecting Kenya's agricultural value chain — from smallholder farmers to national buyers — on one intelligent platform.
             </p>
             <div style={styles.footerContactInfo}>
-              <p>📍 Nairobi, Kenya • Kampala, Uganda • Dar es Salaam</p>
-              <p>✉️ hello@kilimo-chain.co.ke</p>
+              <p>📍 Nairobi, Kenya</p>
+              <p>✉️ kilimo-chain@gmail.com</p>
             </div>
           </div>
 
           <div style={styles.footerRight}>
             <div style={styles.footerCol}>
               <h4 style={styles.footerColTitle}>Platform</h4>
-              <Link to="/simulator" style={styles.footerLink}>For Farmers</Link>
+              <a href="#stakeholders" style={styles.footerLink}>For Farmers (*710*33334#)</a>
               <Link to="/register" style={styles.footerLink}>For Buyers</Link>
               <Link to="/login" style={styles.footerLink}>For Cooperatives</Link>
             </div>

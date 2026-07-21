@@ -84,10 +84,7 @@ export default function HarvestInventory() {
           >
             <option value="">All Statuses</option>
             <option value="AVAILABLE">Available</option>
-            <option value="REQUESTED">Requested</option>
-            <option value="RESERVED">Reserved</option>
             <option value="SOLD">Sold</option>
-            <option value="CANCELLED">Cancelled</option>
           </select>
         </div>
       </div>
@@ -119,10 +116,8 @@ export default function HarvestInventory() {
               </thead>
               <tbody>
                 {harvests.map((h) => {
-                  let badgeClass = 'badge-warning'; // requested / reserved
-                  if (h.status === 'AVAILABLE') badgeClass = 'badge-success';
-                  if (h.status === 'SOLD') badgeClass = 'badge-info';
-                  if (h.status === 'CANCELLED') badgeClass = 'badge-danger';
+                  let badgeClass = 'badge-success';
+                  if (h.status === 'SOLD') badgeClass = 'badge-danger';
 
                   return (
                     <tr key={h.id}>

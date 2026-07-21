@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:9001';
+const BASE_URL = 'http://51.15.243.105:30746';
 
 // Helper to construct query params
 const queryParams = (params) => {
@@ -116,12 +116,10 @@ export const api = {
       return await request('/api/payments/simulate-callback', {
         method: 'POST',
         body: JSON.stringify({
-          merchantRequestId,
           checkoutRequestId,
-          amount: Number(amount),
-          mpesaReceiptNumber,
-          transactionDesc,
-          status, // 'SUCCESS' or 'FAILED'
+          resultCode: status === 'SUCCESS' ? 0 : 1,
+          resultDesc: transactionDesc || 'Processed',
+          mpesaReceiptNumber: mpesaReceiptNumber || ('MOCK' + Date.now()),
         }),
       });
     },

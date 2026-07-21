@@ -6,6 +6,7 @@ export default function PaymentAudit() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filters
   const [status, setStatus] = useState('');
@@ -19,6 +20,7 @@ export default function PaymentAudit() {
     try {
       const data = await api.admin.getPayments(status || undefined);
       setPayments(data || []);
+      setCurrentPage(1);
     } catch (e) {
       console.error(e);
       setError('Failed to fetch payment transaction logs.');
@@ -69,58 +71,84 @@ export default function PaymentAudit() {
             <p>No payments recorded matching filters.</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="custom-table">
-              <thead>
-                <tr>
-                  <th>Payment ID</th>
-                  <th>Order Ref</th>
-                  <th>M-Pesa Receipt</th>
-                  <th>Amount</th>
-                  <th>Payer Phone</th>
-                  <th>Checkout Request ID</th>
-                  <th>Merchant Request ID</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Time Paid</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p) => {
-                  let statusBadge = 'badge-warning';
-                  if (p.status === 'SUCCESS') statusBadge = 'badge-success';
-                  if (p.status === 'FAILED') statusBadge = 'badge-danger';
-                  if (p.status === 'CANCELLED') statusBadge = 'badge-danger';
+          <div>
+            <div className="table-responsive">
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Payment ID</th>
+                    <th>Order Ref</th>
+                    <th>M-Pesa Receipt</th>
+                    <th>Amount</th>
+                    <th>Payer Phone</th>
+                    <th>Checkout Request ID</th>
+                    <th>Merchant Request ID</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Time Paid</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.slice((currentPage - 1) * 8, currentPage * 8).map((p) => {
+                    let statusBadge = 'badge-warning';
+                    if (p.status === 'SUCCESS') statusBadge = 'badge-success';
+                    if (p.status === 'FAILED') statusBadge = 'badge-danger';
+                    if (p.status === 'CANCELLED') statusBadge = 'badge-danger';
 
-                  return (
-                    <tr key={p.id}>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{p.id}</td>
-                      <td>
-                        <span style={{ fontWeight: '600' }}>
-                          {p.buyerRequestId ? `Request #${p.buyerRequestId}` : 'N/A'}
-                        </span>
-                      </td>
-                      <td style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {p.mpesaReceiptNumber || 'N/A'}
-                      </td>
-                      <td style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>
-                        KES {p.amount?.toLocaleString()}
-                      </td>
-                      <td>{p.phoneNumber || 'N/A'}</td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.checkoutRequestId || 'N/A'}</td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.merchantRequestId || 'N/A'}</td>
-                      <td>{p.transactionDesc || 'M-Pesa transaction'}</td>
-                      <td>
-                        <span className={`badge ${statusBadge}`}>{p.status}</span>
-                      </td>
-                      <td>
-                        {p.paidAt ? new Date(p.paidAt).toLocaleString() : new Date(p.createdAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    return (
+                      <tr key={p.id}>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{p.id}</td>
+                        <td>
+                          <span style={{ fontWeight: '600' }}>
+                            {p.buyerRequestId ? `Request #${p.buyerRequestId}` : 'N/A'}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                          {p.mpesaReceiptNumber || 'N/A'}
+                        </td>
+                        <td style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>
+                          KES {p.amount?.toLocaleString()}
+                        </td>
+                        <td>{p.phoneNumber || 'N/A'}</td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.checkoutRequestId || 'N/A'}</td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.merchantRequestId || 'N/A'}</td>
+                        <td>{p.transactionDesc || 'M-Pesa transaction'}</td>
+                        <td>
+                          <span className={`badge ${statusBadge}`}>{p.status}</span>
+                        </td>
+                        <td>
+                          {p.paidAt ? new Date(p.paidAt).toLocaleString() : new Date(p.createdAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {Math.ceil(payments.length / 8) > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                  Page {currentPage} of {Math.ceil(payments.length / 8)}
+                </span>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(payments.length / 8)))}
+                  disabled={currentPage === Math.ceil(payments.length / 8)}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

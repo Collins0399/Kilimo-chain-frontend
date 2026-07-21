@@ -145,7 +145,7 @@ export default function AdminDashboard() {
           
           <div style={styles.actionsList}>
             <Link to="/admin/farmers" className="btn btn-secondary" style={styles.actionBtn}>
-              Onboard New Farmer
+              Add New Farmer
             </Link>
             <Link to="/admin/prices" className="btn btn-primary" style={styles.actionBtn}>
               Update Market Prices
@@ -166,7 +166,7 @@ export default function AdminDashboard() {
             </div>
             <div style={styles.statusRow}>
               <span>USSD Offline Portal</span>
-              <span className="badge badge-success">Active</span>
+              <span className="badge badge-success">Active (*710*33334#)</span>
             </div>
             <div style={styles.statusRow}>
               <span>M-Pesa Sandbox Callback</span>

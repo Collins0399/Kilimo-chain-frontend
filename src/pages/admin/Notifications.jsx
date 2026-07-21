@@ -6,6 +6,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchNotifications();
@@ -23,6 +24,7 @@ export default function Notifications() {
         return a.read_status ? 1 : -1;
       });
       setNotifications(sorted);
+      setCurrentPage(1);
     } catch (e) {
       console.error(e);
       setError('Failed to fetch notifications.');
@@ -94,49 +96,75 @@ export default function Notifications() {
             <p>No notifications logged yet.</p>
           </div>
         ) : (
-          <div style={styles.list}>
-            {notifications.map((n) => {
-              const { color, icon } = getNotificationIcon(n.type);
+          <div>
+            <div style={styles.list}>
+              {notifications.slice((currentPage - 1) * 8, currentPage * 8).map((n) => {
+                const { color, icon } = getNotificationIcon(n.type);
 
-              return (
-                <div key={n.id} className={`notification-item ${!n.read_status ? 'unread' : ''}`} style={styles.item}>
-                  <div className="notification-icon-box" style={{ background: color + '22', color: color }}>
-                    {icon}
-                  </div>
-                  
-                  <div style={styles.content}>
-                    <div style={styles.metaRow}>
-                      <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{n.type}</span>
-                      <span style={styles.time}>{n.created_at ? new Date(n.created_at).toLocaleString() : 'Recent'}</span>
+                return (
+                  <div key={n.id} className={`notification-item ${!n.read_status ? 'unread' : ''}`} style={styles.item}>
+                    <div className="notification-icon-box" style={{ background: color + '22', color: color }}>
+                      {icon}
                     </div>
-                    <p style={{ marginTop: '0.4rem', color: n.read_status ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: n.read_status ? '400' : '600' }}>
-                      {n.message}
-                    </p>
-                  </div>
+                    
+                    <div style={styles.content}>
+                      <div style={styles.metaRow}>
+                        <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{n.type}</span>
+                        <span style={styles.time}>{n.created_at ? new Date(n.created_at).toLocaleString() : 'Recent'}</span>
+                      </div>
+                      <p style={{ marginTop: '0.4rem', color: n.read_status ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: n.read_status ? '400' : '600' }}>
+                        {n.message}
+                      </p>
+                    </div>
 
-                  <div style={styles.actions}>
-                    {!n.read_status && (
+                    <div style={styles.actions}>
+                      {!n.read_status && (
+                        <button
+                          onClick={() => handleMarkRead(n.id)}
+                          className="btn btn-secondary"
+                          style={styles.actionBtn}
+                          title="Mark as Read"
+                        >
+                          <MailOpen size={14} />
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleMarkRead(n.id)}
-                        className="btn btn-secondary"
+                        onClick={() => handleDelete(n.id)}
+                        className="btn btn-danger"
                         style={styles.actionBtn}
-                        title="Mark as Read"
+                        title="Delete"
                       >
-                        <MailOpen size={14} />
+                        <Trash2 size={14} />
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(n.id)}
-                      className="btn btn-danger"
-                      style={styles.actionBtn}
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            
+            {Math.ceil(notifications.length / 8) > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                  Page {currentPage} of {Math.ceil(notifications.length / 8)}
+                </span>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(notifications.length / 8)))}
+                  disabled={currentPage === Math.ceil(notifications.length / 8)}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 
 export default function SmsManagement() {
   const [logs, setLogs] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [stats, setStats] = useState({
     totalSent: 0,
     sentToday: 0,
@@ -33,6 +34,7 @@ export default function SmsManagement() {
         event: filterEvent,
       });
       setLogs(Array.isArray(data) ? data : []);
+      setCurrentPage(1);
     } catch (e) {
       console.error(e);
       setError('Failed to load SMS logs.');
@@ -229,48 +231,74 @@ export default function SmsManagement() {
             ) : logs.length === 0 ? (
               <div style={styles.noData}>No SMS logs match current criteria.</div>
             ) : (
-              <div className="table-responsive">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '150px' }}>Sent Date</th>
-                      <th style={{ width: '120px' }}>Recipient</th>
-                      <th style={{ width: '150px' }}>Trigger Event</th>
-                      <th>Message Body</th>
-                      <th style={{ width: '100px' }}>Status</th>
-                      <th style={{ width: '110px' }}>Delivery</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map((log) => (
-                      <tr key={log.id}>
-                        <td style={styles.dateCell}>{formatDate(log.sentAt)}</td>
-                        <td style={styles.phoneCell}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <Phone size={12} style={{ color: 'var(--text-muted)' }} />
-                            <span>{log.recipientPhone}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>
-                            {getEventLabel(log.triggerEvent)}
-                          </span>
-                        </td>
-                        <td style={styles.messageCell}>{log.message}</td>
-                        <td>
-                          <span className={`badge ${log.status === 'SENT' || log.status === 'SUCCESS' ? 'badge-success' : 'badge-danger'}`}>
-                            {log.status}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge ${log.deliveryStatus === 'DELIVERED' ? 'badge-success' : log.deliveryStatus === 'PENDING' ? 'badge-warning' : 'badge-danger'}`}>
-                            {log.deliveryStatus || 'DELIVERED'}
-                          </span>
-                        </td>
+              <div>
+                <div className="table-responsive">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '150px' }}>Sent Date</th>
+                        <th style={{ width: '120px' }}>Recipient</th>
+                        <th style={{ width: '150px' }}>Trigger Event</th>
+                        <th>Message Body</th>
+                        <th style={{ width: '100px' }}>Status</th>
+                        <th style={{ width: '110px' }}>Delivery</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {logs.slice((currentPage - 1) * 8, currentPage * 8).map((log) => (
+                        <tr key={log.id}>
+                          <td style={styles.dateCell}>{formatDate(log.sentAt)}</td>
+                          <td style={styles.phoneCell}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Phone size={12} style={{ color: 'var(--text-muted)' }} />
+                              <span>{log.recipientPhone}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>
+                              {getEventLabel(log.triggerEvent)}
+                            </span>
+                          </td>
+                          <td style={styles.messageCell}>{log.message}</td>
+                          <td>
+                            <span className={`badge ${log.status === 'SENT' || log.status === 'SUCCESS' ? 'badge-success' : 'badge-danger'}`}>
+                              {log.status}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge ${log.deliveryStatus === 'DELIVERED' ? 'badge-success' : log.deliveryStatus === 'PENDING' ? 'badge-warning' : 'badge-danger'}`}>
+                              {log.deliveryStatus || 'DELIVERED'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {Math.ceil(logs.length / 8) > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                      Page {currentPage} of {Math.ceil(logs.length / 8)}
+                    </span>
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(logs.length / 8)))}
+                      disabled={currentPage === Math.ceil(logs.length / 8)}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

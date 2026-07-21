@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Key, Mail, ShieldAlert, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
+import LandingNavbar from '../components/LandingNavbar';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -30,59 +31,29 @@ export default function Login() {
     }
   };
 
-  const handleDemoFill = async (role) => {
-    setError('');
-    let demoEmail = '';
-    let demoPassword = '';
-
-    if (role === 'ADMIN') {
-      demoEmail = 'admin@kilimo.com';
-      demoPassword = 'adminpassword';
-    } else {
-      demoEmail = 'buyer@kilimo.com';
-      demoPassword = 'password123';
-    }
-
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    
-    // We can execute immediately to make the demo smoother
-    setLoading(true);
-    try {
-      const data = await api.auth.login(demoEmail, demoPassword);
-      if (data.role === 'COOPERATIVE_ADMIN') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/buyer/dashboard');
-      }
-    } catch (err) {
-      console.error(err);
-      setError(`Failed to log in with pre-filled credentials: ${err.message}. (Note: If this is the buyer account, please register it first!)`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div style={styles.container}>
-      {/* Background glowing blobs */}
-      <div style={styles.glowGreen}></div>
-      <div style={styles.glowGold}></div>
-
-      <div style={styles.card} className="glass-panel">
-        <div style={styles.header}>
-          <div style={styles.logoBadge}>🌾</div>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f8fafc', width: '100vw', overflowX: 'hidden' }}>
+      <LandingNavbar />
+      
+      <div style={styles.container}>
+        {/* Background glowing blobs */}
+        <div style={styles.glowGreen}></div>
+        <div style={styles.glowGold}></div>
+ 
+        <div style={styles.card} className="glass-panel">
+          <div style={styles.header}>
+            <div style={styles.logoBadge}>🌾</div>
           <h1 style={styles.title}>Welcome back</h1>
           <p style={styles.subtitle}>Log in to your Kilimo-Chain account</p>
         </div>
-
+ 
         {error && (
           <div style={styles.errorBox} className="badge-danger">
             <ShieldAlert size={18} />
             <span>{error}</span>
           </div>
         )}
-
+ 
         <form onSubmit={handleLogin} style={styles.form}>
           <div className="form-group">
             <label className="form-label" htmlFor="email">Email Address</label>
@@ -94,13 +65,13 @@ export default function Login() {
                 required
                 className="form-control"
                 style={styles.inputWithIcon}
-                placeholder="you@example.com"
+                placeholder="Email Address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </div>
-
+ 
           <div className="form-group">
             <label className="form-label" htmlFor="password">Password</label>
             <div style={styles.inputWrapper}>
@@ -117,7 +88,7 @@ export default function Login() {
               />
             </div>
           </div>
-
+ 
           <button
             type="submit"
             disabled={loading}
@@ -128,45 +99,20 @@ export default function Login() {
             <ArrowRight size={18} />
           </button>
         </form>
-
-        <div style={styles.divider}>
-          <span style={styles.dividerText}>Demo Quick Access</span>
-        </div>
-
-        <div style={styles.demoButtons}>
-          <button
-            type="button"
-            onClick={() => handleDemoFill('ADMIN')}
-            className="btn btn-secondary"
-            style={styles.demoBtn}
-          >
-            👑 Coop Admin Demo
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDemoFill('BUYER')}
-            className="btn btn-secondary"
-            style={styles.demoBtn}
-          >
-            🛒 Buyer Demo
-          </button>
-        </div>
-
+ 
         <div style={styles.footerText}>
           Don't have a buyer account?{' '}
           <Link to="/register" style={styles.registerLink}>
             Register here
           </Link>
         </div>
-
+ 
         <div style={styles.footerText}>
-          Want to simulate SMS/USSD?{' '}
-          <Link to="/simulator" style={styles.registerLink}>
-            Open Simulator Console
-          </Link>
+          Farmers can dial <strong style={{ color: '#15803d' }}>*710*33334#</strong> on any phone to access USSD services.
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
@@ -175,9 +121,9 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '100vh',
-    width: '100vw',
-    backgroundColor: 'var(--bg-primary)',
+    minHeight: 'calc(100vh - 70px)',
+    width: '100%',
+    backgroundColor: '#f8fafc',
     position: 'relative',
     overflow: 'hidden',
     padding: '2rem',

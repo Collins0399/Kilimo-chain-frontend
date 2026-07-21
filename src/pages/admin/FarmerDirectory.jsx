@@ -119,14 +119,14 @@ export default function FarmerDirectory() {
       };
 
       await api.admin.registerFarmer(dto);
-      setModalSuccess('Farmer onboarded successfully!');
+      setModalSuccess('Farmer added successfully!');
       setTimeout(() => {
         handleCloseModal();
         fetchFarmers();
       }, 2000);
     } catch (err) {
       console.error(err);
-      setModalError(err.message || 'Failed to onboard farmer.');
+      setModalError(err.message || 'Failed to add farmer.');
     } finally {
       setSubmitting(false);
     }
@@ -137,11 +137,11 @@ export default function FarmerDirectory() {
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Farmer Directory 👨‍🌾</h1>
-          <p style={styles.subtitle}>Onboard new smallholders, manage verification credentials, and toggle status.</p>
+          <p style={styles.subtitle}>Add new smallholders, manage verification credentials, and toggle status.</p>
         </div>
         <button onClick={handleOpenModal} className="btn btn-primary">
           <UserPlus size={16} />
-          <span>Onboard Farmer</span>
+          <span>Add Farmer</span>
         </button>
       </div>
 
@@ -267,12 +267,12 @@ export default function FarmerDirectory() {
         )}
       </div>
 
-      {/* Onboard Farmer Modal */}
+      {/* Add Farmer Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content glass-panel" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h2>Onboard New Farmer</h2>
+              <h2>Add New Farmer</h2>
               <button onClick={handleCloseModal} className="modal-close">✕</button>
             </div>
 
@@ -414,7 +414,7 @@ export default function FarmerDirectory() {
                   Cancel
                 </button>
                 <button type="submit" disabled={submitting || modalSuccess} className="btn btn-primary">
-                  {submitting ? 'Onboarding...' : 'Onboard Farmer'}
+                  {submitting ? 'Adding...' : 'Add Farmer'}
                 </button>
               </div>
             </form>
