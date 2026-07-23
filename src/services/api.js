@@ -23,6 +23,13 @@ const request = async (endpoint, options = {}) => {
     headers,
   });
 
+  if (response.status === 401) {
+    localStorage.removeItem('kilimo_token');
+    localStorage.removeItem('kilimo_user');
+    window.location.href = '/login';
+    throw new Error('Session expired. Please log in again.');
+  }
+
   if (!response.ok) {
     let errorMsg = 'An error occurred';
     try {
@@ -101,6 +108,9 @@ export const api = {
     },
     getRequests: async (buyerId) => {
       return await request(`/api/buyer/requests/buyer/${buyerId}`);
+    },
+    getPayments: async (buyerId) => {
+      return await request(`/api/buyer/payments/buyer/${buyerId}`);
     },
   },
 

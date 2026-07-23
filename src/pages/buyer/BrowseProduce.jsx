@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, MapPin, Tag, Box, AlertCircle, Check, X, Phone, ShieldAlert } from 'lucide-react';
+import { Search, MapPin, Tag, Box, AlertCircle, Check, X, Phone, ShieldAlert, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 
 export default function BrowseProduce() {
@@ -26,9 +26,6 @@ export default function BrowseProduce() {
   const [phoneToPay, setPhoneToPay] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentResponse, setPaymentResponse] = useState(null);
-  const [simPin, setSimPin] = useState('');
-  const [simulating, setSimulating] = useState(false);
-  const [simResult, setSimResult] = useState('');
 
   useEffect(() => {
     fetchListings();
@@ -58,8 +55,6 @@ export default function BrowseProduce() {
     setCreatedRequest(null);
     setPhoneToPay(currentUser?.phoneNumber || '254700000000');
     setPaymentResponse(null);
-    setSimPin('');
-    setSimResult('');
   };
 
   const handleCloseModal = () => {
@@ -113,28 +108,12 @@ export default function BrowseProduce() {
     try {
       // 1. Call backend initiate STK Push
       const res = await api.payments.initiate(createdRequest.id, phoneToPay);
-      
-      // 2. Automatically simulate successful M-Pesa callback in the background
-      const receiptNo = 'QHJ' + Math.random().toString(36).substring(2, 10).toUpperCase();
-      const desc = 'M-Pesa transaction completed successfully.';
-
-      await api.payments.simulateCallback(
-        res.merchantRequestId,
-        res.checkoutRequestId,
-        createdRequest.totalAmount,
-        receiptNo,
-        desc,
-        'SUCCESS'
-      );
-
-      setSuccessMsg('M-Pesa STK Push prompted. Payment completed successfully!');
-      setTimeout(() => {
-        handleCloseModal();
-        fetchListings(); // reload listings to see updated stock
-      }, 2500);
+      setPaymentResponse(res);
+      setPaymentStage('payment_success');
+      setSuccessMsg(`An M-Pesa STK Push has been sent to your phone number ${phoneToPay}. Please enter your M-Pesa PIN on your phone to authorize the payment of KES ${createdRequest.totalAmount?.toLocaleString()}.`);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to complete payment.');
+      setError(err.message || 'Failed to initiate M-Pesa STK Push.');
     } finally {
       setPaymentLoading(false);
     }
@@ -186,14 +165,52 @@ export default function BrowseProduce() {
         </div>
       </div>
 
+      {error && !selectedListing && (
+        <div className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+          <button 
+            onClick={fetchListings} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}>
-          <h3>Loading listings from farmers...</h3>
+        <div style={styles.grid}>
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="glass-card green-accent" style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="skeleton-text" style={{ width: '120px', height: '22px' }}></div>
+                <div className="skeleton-text" style={{ width: '60px', height: '20px' }}></div>
+              </div>
+              <div style={{ ...styles.cardDetails, display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem', marginBottom: '1rem' }}>
+                {[...Array(3)].map((_, j) => (
+                  <div key={j} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div className="skeleton-text" style={{ width: '16px', height: '16px', marginBottom: '0' }}></div>
+                    <div className="skeleton-text" style={{ width: '120px', height: '16px', marginBottom: '0' }}></div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ ...styles.cardPricing, borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '1rem', marginBottom: '0' }}>
+                <div className="skeleton-text" style={{ width: '60px', height: '12px' }}></div>
+                <div className="skeleton-text" style={{ width: '140px', height: '24px', marginTop: '0.25rem' }}></div>
+              </div>
+              <div className="skeleton-text" style={{ width: '100%', height: '38px', marginTop: '1rem', borderRadius: 'var(--radius-sm)' }}></div>
+            </div>
+          ))}
         </div>
       ) : filteredListings.length === 0 ? (
         <div style={styles.empty}>
           <AlertCircle size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }} />
-          <p>No listings match your search criteria.</p>
+          <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>No results found.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No harvests match your search or filter parameters.</p>
         </div>
       ) : (
         <div style={styles.grid}>
@@ -359,8 +376,8 @@ export default function BrowseProduce() {
                     value={phoneToPay}
                     onChange={(e) => setPhoneToPay(e.target.value)}
                   />
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                    Enter format 2547XXXXXXXX
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                    Must be 2547XXXXXXXX (12 digits)
                   </span>
                 </div>
 
@@ -373,6 +390,23 @@ export default function BrowseProduce() {
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {paymentStage === 'payment_success' && (
+            <div className="modal-content glass-panel" style={{ maxWidth: '450px', textAlign: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(0, 255, 0, 0.1)', color: 'var(--accent-green)', marginBottom: '1.5rem' }}>
+                <Check size={36} />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-family-heading)', marginBottom: '0.5rem' }}>STK Push Dispatched</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                {successMsg}
+              </p>
+              <div style={styles.modalActions}>
+                <button type="button" onClick={handleCloseModal} className="btn btn-primary" style={{ width: '100%' }}>
+                  Done
+                </button>
+              </div>
             </div>
           )}
         </div>

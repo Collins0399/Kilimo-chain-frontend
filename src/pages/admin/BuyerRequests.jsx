@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Check, X, ShieldAlert, ShoppingBag, Eye } from 'lucide-react';
+import { Check, X, ShieldAlert, ShoppingBag, Eye, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDate } from '../../services/utils';
+import StatusBadge from '../../components/StatusBadge';
 
 export default function BuyerRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [actioningId, setActioningId] = useState(null);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState('');
@@ -17,6 +20,7 @@ export default function BuyerRequests() {
 
   const fetchRequests = async () => {
     setLoading(true);
+    setError('');
     try {
       const data = await api.admin.getBuyerRequests(undefined);
       setRequests(data || []);
@@ -51,25 +55,38 @@ export default function BuyerRequests() {
 
   const handleApprove = async (id) => {
     if (!window.confirm('Are you sure you want to approve this request? It will send a payment STK push trigger link to the buyer.')) return;
+    setActioningId(id);
+    setError('');
     try {
       await api.admin.approveRequest(id);
       fetchRequests();
     } catch (e) {
       console.error(e);
       setError(e.message || 'Failed to approve request.');
+    } finally {
+      setActioningId(null);
     }
   };
 
   const handleReject = async (id) => {
     if (!window.confirm('Are you sure you want to reject this request?')) return;
+    setActioningId(id);
+    setError('');
     try {
       await api.admin.rejectRequest(id);
       fetchRequests();
     } catch (e) {
       console.error(e);
       setError(e.message || 'Failed to reject request.');
+    } finally {
+      setActioningId(null);
     }
   };
+
+  const filtered = getFilteredRequests();
+  const pageSize = 8;
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
 
   return (
     <div>
@@ -79,8 +96,19 @@ export default function BuyerRequests() {
       </div>
 
       {error && (
-        <div className="badge-danger" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
-          {error}
+        <div className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldAlert size={18} />
+            <span>{error}</span>
+          </div>
+          <button 
+            onClick={fetchRequests} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
@@ -104,12 +132,48 @@ export default function BuyerRequests() {
 
       <div className="glass-panel" style={{ padding: '2rem' }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <h3>Querying buyer requests...</h3>
+          <div className="table-responsive">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Request ID</th>
+                  <th>Buyer Details</th>
+                  <th>Farmer Details</th>
+                  <th>Crop Requested</th>
+                  <th>Quantity</th>
+                  <th>Est. Amount</th>
+                  <th>Date Requested</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'center' }}>Approval Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton-text" style={{ width: '50px', height: '18px' }}></div></td>
+                    <td>
+                      <div className="skeleton-text" style={{ width: '120px', height: '16px' }}></div>
+                      <div className="skeleton-text" style={{ width: '90px', height: '12px', marginTop: '0.25rem' }}></div>
+                    </td>
+                    <td>
+                      <div className="skeleton-text" style={{ width: '120px', height: '16px' }}></div>
+                      <div className="skeleton-text" style={{ width: '90px', height: '12px', marginTop: '0.25rem' }}></div>
+                    </td>
+                    <td><div className="skeleton-text" style={{ width: '90px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '100px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '100px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '70px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px', margin: '0 auto' }}></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : getFilteredRequests().length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-            <p>No purchase requests found matching filters.</p>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+            <ShoppingBag size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }} />
+            <p style={{ fontWeight: '600' }}>No purchase requests found matching filters.</p>
           </div>
         ) : (
           <div>
@@ -129,23 +193,7 @@ export default function BuyerRequests() {
                   </tr>
                 </thead>
                 <tbody>
-                  {getFilteredRequests().slice((currentPage - 1) * 8, currentPage * 8).map((r) => {
-                    let statusBadge = 'badge-warning'; // pending
-                    let statusLabel = 'Pending';
-                    if (r.status === 'PENDING') {
-                      statusBadge = 'badge-warning';
-                      statusLabel = 'Pending';
-                    } else if (r.status === 'APPROVED' || r.status === 'ACCEPTED' || r.status === 'PAYMENT_PENDING') {
-                      statusBadge = 'badge-info';
-                      statusLabel = 'Approved';
-                    } else if (r.status === 'PAID' || r.status === 'COMPLETED') {
-                      statusBadge = 'badge-success';
-                      statusLabel = 'Paid';
-                    } else if (r.status === 'REJECTED' || r.status === 'CANCELLED') {
-                      statusBadge = 'badge-danger';
-                      statusLabel = 'Rejected';
-                    }
-
+                  {paginated.map((r) => {
                     const canAct = r.status === 'PENDING';
 
                     return (
@@ -165,32 +213,36 @@ export default function BuyerRequests() {
                         <td style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>
                           KES {r.totalAmount ? r.totalAmount.toLocaleString() : 0}
                         </td>
-                        <td>{new Date(r.requestDate).toLocaleDateString()}</td>
+                        <td>{formatDate(r.requestDate)}</td>
                         <td>
-                          <span className={`badge ${statusBadge}`}>{statusLabel}</span>
+                          <StatusBadge status={r.status} />
                         </td>
                         <td style={styles.actionCell}>
                           {canAct ? (
                             <>
                               <button
                                 onClick={() => handleApprove(r.id)}
+                                disabled={actioningId === r.id}
                                 className="btn btn-primary"
-                                style={styles.tableBtn}
+                                style={{ ...styles.tableBtn, opacity: actioningId === r.id ? 0.5 : 1 }}
                                 title="Approve Purchase Request"
+                                aria-label="Approve Purchase Request"
                               >
-                                <Check size={14} />
+                                {actioningId === r.id ? <RefreshCw className="spin" size={14} /> : <Check size={14} />}
                               </button>
                               <button
                                 onClick={() => handleReject(r.id)}
+                                disabled={actioningId === r.id}
                                 className="btn btn-danger"
-                                style={styles.tableBtn}
+                                style={{ ...styles.tableBtn, opacity: actioningId === r.id ? 0.5 : 1 }}
                                 title="Reject Purchase Request"
+                                aria-label="Reject Purchase Request"
                               >
-                                <X size={14} />
+                                {actioningId === r.id ? <RefreshCw className="spin" size={14} /> : <X size={14} />}
                               </button>
                             </>
                           ) : (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Decision Recorded</span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No Action Required</span>
                           )}
                         </td>
                       </tr>
@@ -200,24 +252,25 @@ export default function BuyerRequests() {
               </table>
             </div>
 
-            {Math.ceil(getFilteredRequests().length / 8) > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
+                <button
                   disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
                   className="btn btn-secondary"
-                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
                 >
                   Previous
                 </button>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
-                  Page {currentPage} of {Math.ceil(getFilteredRequests().length / 8)}
+                <span style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                  Page {currentPage} of {totalPages}
                 </span>
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(getFilteredRequests().length / 8)))}
-                  disabled={currentPage === Math.ceil(getFilteredRequests().length / 8)}
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
                   className="btn btn-secondary"
-                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
                 >
                   Next
                 </button>
@@ -245,7 +298,6 @@ const styles = {
   },
   filterBar: {
     display: 'flex',
-    gap: '1rem',
     padding: '1.25rem',
     marginBottom: '2rem',
   },
@@ -272,6 +324,9 @@ const styles = {
     padding: '0.4rem',
     width: '32px',
     height: '32px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 };
 export { styles };

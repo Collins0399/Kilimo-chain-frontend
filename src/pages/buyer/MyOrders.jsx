@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ShoppingBag, FileText, Phone, Award, ShieldAlert, Sparkles, Check, X } from 'lucide-react';
+import { ShoppingBag, FileText, Phone, Award, ShieldAlert, Sparkles, Check, X, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDate } from '../../services/utils';
+import StatusBadge from '../../components/StatusBadge';
 
 export default function MyOrders() {
   const currentUser = api.auth.getCurrentUser();
@@ -13,12 +15,8 @@ export default function MyOrders() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentResponse, setPaymentResponse] = useState(null);
   const [phoneToPay, setPhoneToPay] = useState('');
-
-  // STK Simulation states
-  const [showSimulator, setShowSimulator] = useState(false);
-  const [simPin, setSimPin] = useState('');
-  const [simulating, setSimulating] = useState(false);
-  const [simResult, setSimResult] = useState('');
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -26,6 +24,7 @@ export default function MyOrders() {
 
   const fetchOrders = async () => {
     setLoading(true);
+    setError('');
     try {
       if (currentUser) {
         const data = await api.buyer.getRequests(currentUser.userId);
@@ -43,28 +42,28 @@ export default function MyOrders() {
     setActivePaymentRequest(order);
     setPhoneToPay(currentUser.phoneNumber || '254700000000');
     setPaymentResponse(null);
-    setShowSimulator(false);
-    setSimResult('');
-    setSimPin('');
+    setPaymentSuccess(false);
+    setSuccessMsg('');
     setError('');
   };
 
   const handleClosePaymentModal = () => {
     setActivePaymentRequest(null);
-    setShowSimulator(false);
+    setPaymentSuccess(false);
   };
 
   const handleInitiatePayment = async (e) => {
     e.preventDefault();
     setPaymentLoading(true);
     setError('');
+    setSuccessMsg('');
 
     try {
       // 1. Call backend initiate STK Push
       const res = await api.payments.initiate(activePaymentRequest.id, phoneToPay);
       setPaymentResponse(res);
-      // 2. Open the simulated phone push popup
-      setShowSimulator(true);
+      setPaymentSuccess(true);
+      setSuccessMsg(`An M-Pesa STK Push has been sent to your phone number ${phoneToPay}. Please enter your M-Pesa PIN on your phone to authorize the payment of KES ${activePaymentRequest.totalAmount?.toLocaleString()}.`);
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to initiate M-Pesa STK Push');
@@ -73,42 +72,33 @@ export default function MyOrders() {
     }
   };
 
-  const handleSimulateResponse = async (status) => {
-    setSimulating(true);
-    try {
-      const receiptNo = status === 'SUCCESS' ? 'QHJ' + Math.random().toString(36).substring(2, 10).toUpperCase() : '';
-      const desc = status === 'SUCCESS' ? 'M-Pesa transaction completed successfully.' : 'M-Pesa transaction failed or cancelled by user.';
-
-      // Call simulated callback endpoint in backend
-      await api.payments.simulateCallback(
-        paymentResponse.merchantRequestId,
-        paymentResponse.checkoutRequestId,
-        activePaymentRequest.totalAmount,
-        receiptNo,
-        desc,
-        status
-      );
-
-      setSimResult(status);
-      setTimeout(() => {
-        handleClosePaymentModal();
-        fetchOrders(); // reload order list
-      }, 2500);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to post simulated callback to the backend: ' + err.message);
-    } finally {
-      setSimulating(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}>
-        <h3>Loading your orders...</h3>
-      </div>
-    );
-  }
+  const renderSkeletons = () => (
+    <div style={styles.cardContainer}>
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="glass-card green-accent" style={styles.orderCard}>
+          <div style={styles.cardHeader}>
+            <div>
+              <div className="skeleton-text" style={{ width: '100px', height: '22px' }}></div>
+              <div className="skeleton-text" style={{ width: '80px', height: '14px', marginTop: '0.25rem' }}></div>
+            </div>
+            <div className="skeleton-text" style={{ width: '70px', height: '20px', borderRadius: 'var(--radius-full)' }}></div>
+          </div>
+          <div style={styles.cardBody}>
+            <div style={styles.metaGrid}>
+              {[...Array(3)].map((_, j) => (
+                <div key={j}>
+                  <div className="skeleton-text" style={{ width: '40px', height: '10px' }}></div>
+                  <div className="skeleton-text" style={{ width: '60px', height: '16px', marginTop: '0.15rem' }}></div>
+                </div>
+              ))}
+            </div>
+            <div className="skeleton-text" style={{ width: '90%', height: '14px' }}></div>
+            <div className="skeleton-text" style={{ width: '75%', height: '14px' }}></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div>
@@ -118,13 +108,25 @@ export default function MyOrders() {
       </div>
 
       {error && !activePaymentRequest && (
-        <div className="badge-danger" style={styles.errorBox}>
-          <ShieldAlert size={18} />
-          <span>{error}</span>
+        <div className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldAlert size={18} />
+            <span>{error}</span>
+          </div>
+          <button 
+            onClick={fetchOrders} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
-      {orders.length === 0 ? (
+      {loading ? (
+        renderSkeletons()
+      ) : orders.length === 0 ? (
         <div style={styles.empty}>
           <ShoppingBag size={64} style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }} />
           <h2>No Requests Placed</h2>
@@ -133,13 +135,6 @@ export default function MyOrders() {
       ) : (
         <div style={styles.cardContainer}>
           {orders.map((order) => {
-            let badgeClass = 'badge-warning'; // pending
-            if (order.status === 'PAID' || order.status === 'COMPLETED') badgeClass = 'badge-success';
-            if (order.status === 'REJECTED' || order.status === 'CANCELLED') badgeClass = 'badge-danger';
-            if (order.status === 'APPROVED' || order.status === 'PAYMENT_PENDING' || order.status === 'ACCEPTED') badgeClass = 'badge-info';
-
-            // Show payment trigger if status is accepted/approved/payment_pending/pending and not paid yet
-            // Wait, looking at backend logic, if request is accepted/approved by farmer/admin, status becomes ACCEPTED/APPROVED
             const canPay = order.status === 'APPROVED' || order.status === 'PAYMENT_PENDING' || order.status === 'ACCEPTED' || order.status === 'PENDING';
 
             return (
@@ -149,7 +144,7 @@ export default function MyOrders() {
                     <h3 style={{ fontSize: '1.25rem' }}>{order.cropName}</h3>
                     <span style={styles.orderId}>Request ID: #{order.id}</span>
                   </div>
-                  <span className={`badge ${badgeClass}`}>{order.status}</span>
+                  <StatusBadge status={order.status} />
                 </div>
 
                 <div style={styles.cardBody}>
@@ -173,7 +168,7 @@ export default function MyOrders() {
                   <div style={styles.detailsList}>
                     <div>📍 Delivery: <strong>{order.deliveryLocation}</strong></div>
                     {order.farmerName && <div>👨‍🌾 Farmer: <strong>{order.farmerName} ({order.farmerPhone})</strong></div>}
-                    <div>🗓️ Requested: {new Date(order.requestDate).toLocaleDateString()}</div>
+                    <div>🗓️ Requested: {formatDate(order.requestDate)}</div>
                     {order.additionalNotes && <div style={{ fontStyle: 'italic', marginTop: '0.25rem', color: 'var(--text-muted)' }}>📝 "{order.additionalNotes}"</div>}
                   </div>
                 </div>
@@ -195,10 +190,10 @@ export default function MyOrders() {
         </div>
       )}
 
-      {/* Payment Initiation & STK Simulator Modal */}
+      {/* Payment Initiation Modal */}
       {activePaymentRequest && (
         <div className="modal-overlay">
-          {!showSimulator ? (
+          {!paymentSuccess ? (
             /* Phase 1: Initiate Payment Prompt */
             <div className="modal-content glass-panel" style={{ maxWidth: '450px' }}>
               <div className="modal-header">
@@ -229,8 +224,8 @@ export default function MyOrders() {
                     value={phoneToPay}
                     onChange={(e) => setPhoneToPay(e.target.value)}
                   />
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    Enter format 2547XXXXXXXX
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    Must be 2547XXXXXXXX (12 digits)
                   </span>
                 </div>
 
@@ -245,83 +240,19 @@ export default function MyOrders() {
               </form>
             </div>
           ) : (
-            /* Phase 2: M-Pesa STK Push Simulator (Overlaying Mock Phone Screen) */
-            <div style={styles.simulatorWrapper}>
-              <div className="phone-frame">
-                <div className="phone-speaker">
-                  <div className="phone-camera"></div>
-                </div>
-
-                <div className="phone-screen">
-                  <div className="phone-status-bar">
-                    <span>Safaricom LTE</span>
-                    <span>12:00 PM</span>
-                    <span>🔋 100%</span>
-                  </div>
-
-                  <div style={styles.simScreenBody}>
-                    <div style={styles.mpesaLogo}>M-PESA</div>
-
-                    {simResult === '' ? (
-                      <div style={styles.stkDialog}>
-                        <h4 style={styles.stkHeader}>M-PESA PUSH DIALOG</h4>
-                        <p style={styles.stkPrompt}>
-                          Do you want to pay KES {activePaymentRequest.totalAmount?.toLocaleString()} to KILIMO_CHAIN for Order #{activePaymentRequest.id}?
-                        </p>
-
-                        <div style={styles.stkInputGroup}>
-                          <label style={styles.stkLabel}>Enter M-Pesa PIN:</label>
-                          <input
-                            type="password"
-                            maxLength={4}
-                            placeholder="••••"
-                            className="form-control"
-                            style={styles.stkInput}
-                            value={simPin}
-                            onChange={(e) => setSimPin(e.target.value.replace(/\D/g, ''))}
-                          />
-                        </div>
-
-                        {error && <div style={{ color: 'var(--accent-red)', fontSize: '0.8rem', marginTop: '0.5rem' }}>{error}</div>}
-
-                        <div style={styles.stkButtons}>
-                          <button
-                            type="button"
-                            onClick={() => handleSimulateResponse('FAILED')}
-                            disabled={simulating}
-                            style={{ ...styles.stkBtn, background: '#a0a0a0', color: '#000' }}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSimulateResponse('SUCCESS')}
-                            disabled={simulating || simPin.length < 4}
-                            style={{ ...styles.stkBtn, background: '#00ff00', color: '#000', fontWeight: '700' }}
-                          >
-                            {simulating ? 'Processing...' : 'Send'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : simResult === 'SUCCESS' ? (
-                      <div style={styles.stkSuccess}>
-                        <div style={styles.stkSuccessIcon}><Check size={36} /></div>
-                        <h3>Payment Successful!</h3>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                          Simulating payment callback. Your dashboard will reload shortly.
-                        </p>
-                      </div>
-                    ) : (
-                      <div style={styles.stkFailed}>
-                        <div style={styles.stkFailedIcon}><X size={36} /></div>
-                        <h3>Payment Cancelled</h3>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                          Callback simulated as FAILED. Returning to orders.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            /* Phase 2: M-Pesa STK Push Confirmation Display */
+            <div className="modal-content glass-panel" style={{ maxWidth: '450px', textAlign: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(0, 255, 0, 0.1)', color: 'var(--accent-green)', marginBottom: '1.5rem' }}>
+                <Check size={36} />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-family-heading)', marginBottom: '0.5rem' }}>STK Push Dispatched</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                {successMsg}
+              </p>
+              <div style={styles.modalActions}>
+                <button type="button" onClick={() => { handleClosePaymentModal(); fetchOrders(); }} className="btn btn-primary" style={{ width: '100%' }}>
+                  Done
+                </button>
               </div>
             </div>
           )}

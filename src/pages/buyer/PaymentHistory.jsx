@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, ShieldCheck, HelpCircle, FileSpreadsheet } from 'lucide-react';
+import { CreditCard, ShieldCheck, HelpCircle, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDate } from '../../services/utils';
+import StatusBadge from '../../components/StatusBadge';
 
 export default function PaymentHistory() {
   const currentUser = api.auth.getCurrentUser();
@@ -14,17 +16,12 @@ export default function PaymentHistory() {
 
   const fetchPayments = async () => {
     setLoading(true);
+    setError('');
     try {
       if (currentUser) {
-        // Fetch all requests for this buyer first, to get their IDs
-        const buyerRequests = await api.buyer.getRequests(currentUser.userId);
-        const buyerRequestIds = new Set(buyerRequests.map(r => r.id));
-
-        // Fetch all payments and filter
-        const allPayments = await api.admin.getPayments();
-        const filtered = allPayments.filter(p => buyerRequestIds.has(p.buyerRequestId));
-        
-        setPayments(filtered || []);
+        // Fetch only this buyer's payments from the secure buyer-scoped endpoint
+        const data = await api.buyer.getPayments(currentUser.userId);
+        setPayments(data || []);
       }
     } catch (e) {
       console.error(e);
@@ -34,14 +31,6 @@ export default function PaymentHistory() {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}>
-        <h3>Loading payment history...</h3>
-      </div>
-    );
-  }
-
   return (
     <div>
       <div style={styles.header}>
@@ -50,16 +39,52 @@ export default function PaymentHistory() {
       </div>
 
       {error && (
-        <div style={styles.errorBox} className="badge-danger">
+        <div style={styles.errorBox} className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', padding: '1rem', borderRadius: 'var(--radius-sm)' }}>
           <span>{error}</span>
+          <button 
+            onClick={fetchPayments} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
       <div className="glass-panel" style={{ padding: '2rem' }}>
-        {payments.length === 0 ? (
+        {loading ? (
+          <div className="table-responsive">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>M-Pesa Receipt</th>
+                  <th>Amount</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Checkout Request ID</th>
+                  <th>Date & Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '100px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '150px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '70px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '140px', height: '18px' }}></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : payments.length === 0 ? (
           <div style={styles.empty}>
             <CreditCard size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }} />
-            <p>No payment records found.</p>
+            <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>No payment records found.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>Make a purchase request and authorize M-Pesa STK to see payments here.</p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -75,32 +100,26 @@ export default function PaymentHistory() {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => {
-                  let badgeClass = 'badge-warning';
-                  if (p.status === 'SUCCESS') badgeClass = 'badge-success';
-                  if (p.status === 'FAILED') badgeClass = 'badge-danger';
-
-                  return (
-                    <tr key={p.id}>
-                      <td style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {p.mpesaReceiptNumber || 'N/A'}
-                      </td>
-                      <td style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>
-                        KES {p.amount?.toLocaleString()}
-                      </td>
-                      <td>{p.transactionDesc || 'M-Pesa payment'}</td>
-                      <td>
-                        <span className={`badge ${badgeClass}`}>{p.status}</span>
-                      </td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {p.checkoutRequestId || 'N/A'}
-                      </td>
-                      <td>
-                        {p.paidAt ? new Date(p.paidAt).toLocaleString() : new Date(p.createdAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {payments.map((p) => (
+                  <tr key={p.id}>
+                    <td style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                      {p.mpesaReceiptNumber || 'N/A'}
+                    </td>
+                    <td style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>
+                      KES {p.amount?.toLocaleString()}
+                    </td>
+                    <td>{p.transactionDesc || 'M-Pesa payment'}</td>
+                    <td>
+                      <StatusBadge status={p.status} />
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      {p.checkoutRequestId || 'N/A'}
+                    </td>
+                    <td>
+                      {formatDate(p.paidAt || p.createdAt)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

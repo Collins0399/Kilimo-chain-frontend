@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, CheckCircle2, AlertTriangle, Search, Filter, RefreshCw, Clock, Phone } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDate } from '../../services/utils';
+import StatusBadge from '../../components/StatusBadge';
 
 export default function SmsManagement() {
   const [logs, setLogs] = useState([]);
@@ -88,17 +90,6 @@ export default function SmsManagement() {
     }
   };
 
-  // Helper to format date nicely
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString();
-    } catch (e) {
-      return dateString;
-    }
-  };
-
   // Trigger event display labels
   const getEventLabel = (event) => {
     if (!event) return 'System Alert';
@@ -110,13 +101,17 @@ export default function SmsManagement() {
       case 'MPESA_PAYMENT': return '💸 Payment Success';
       case 'HARVEST_COLLECTED': return '📦 Harvest Collected';
       case 'FARMER_VERIFICATION': return '🛡️ Farmer Verified';
-      case 'FARMER_REGISTRATION': return ' Welcome Onboard';
+      case 'FARMER_REGISTRATION': return '👋 Welcome Onboard';
       case 'LOW_STOCK': return '⚠️ Low Stock Alert';
       case 'SOLD_OUT': return '💯 Harvest Sold Out';
       case 'BROADCAST': return '📢 Admin Broadcast';
+      case 'HARVEST_RECORDED': return '🌾 Harvest Recorded';
       default: return event;
     }
   };
+
+  const totalPages = Math.ceil(logs.length / 8) || 1;
+  const paginatedLogs = logs.slice((currentPage - 1) * 8, currentPage * 8);
 
   return (
     <div style={styles.container}>
@@ -138,7 +133,11 @@ export default function SmsManagement() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>TOTAL DISPATCHED</span>
             <MessageSquare size={18} style={{ color: 'var(--accent-green)' }} />
           </div>
-          <span style={styles.statNum}>{statsLoading ? '...' : stats.totalSent}</span>
+          {statsLoading ? (
+            <div className="skeleton-text" style={{ width: '60px', height: '28px', margin: '0.5rem 0' }}></div>
+          ) : (
+            <span style={styles.statNum}>{stats.totalSent}</span>
+          )}
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Accumulated farmer alerts</span>
         </div>
 
@@ -147,7 +146,11 @@ export default function SmsManagement() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>DISPATCHED TODAY</span>
             <Clock size={18} style={{ color: 'var(--accent-gold)' }} />
           </div>
-          <span style={styles.statNum}>{statsLoading ? '...' : stats.sentToday}</span>
+          {statsLoading ? (
+            <div className="skeleton-text" style={{ width: '60px', height: '28px', margin: '0.5rem 0' }}></div>
+          ) : (
+            <span style={styles.statNum}>{stats.sentToday}</span>
+          )}
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sent since midnight</span>
         </div>
 
@@ -156,7 +159,11 @@ export default function SmsManagement() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>DELIVERED SUCCESS</span>
             <CheckCircle2 size={18} style={{ color: 'var(--accent-green)' }} />
           </div>
-          <span style={styles.statNum}>{statsLoading ? '...' : stats.successful}</span>
+          {statsLoading ? (
+            <div className="skeleton-text" style={{ width: '60px', height: '28px', margin: '0.5rem 0' }}></div>
+          ) : (
+            <span style={styles.statNum}>{stats.successful}</span>
+          )}
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Confirmed network delivery</span>
         </div>
 
@@ -165,12 +172,16 @@ export default function SmsManagement() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>FAILED DISPATCH</span>
             <AlertTriangle size={18} style={{ color: 'var(--accent-red)' }} />
           </div>
-          <span style={styles.statNum} className="text-red">{statsLoading ? '...' : stats.failed}</span>
+          {statsLoading ? (
+            <div className="skeleton-text" style={{ width: '60px', height: '28px', margin: '0.5rem 0' }}></div>
+          ) : (
+            <span style={styles.statNum} className="text-red">{stats.failed}</span>
+          )}
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Gateway network drops</span>
         </div>
       </div>
 
-      <div style={styles.contentLayout}>
+      <div className="sms-content-layout">
         {/* Left Side: logs auditing */}
         <div style={styles.logAuditor}>
           <div className="glass-card" style={{ padding: '1.25rem' }}>
@@ -214,19 +225,51 @@ export default function SmsManagement() {
                 </select>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ height: '38px', padding: '0 1rem' }}>
+              <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: '38px', padding: '0 1rem' }}>
                 Search
               </button>
             </form>
 
             {/* Logs Table */}
             {loading ? (
-              <div style={styles.centerSpinner}>
-                <RefreshCw size={24} className="spin" style={{ color: 'var(--accent-green)' }} />
-                <span style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Loading alerts log...</span>
+              <div className="table-responsive">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '150px' }}>Sent Date</th>
+                      <th style={{ width: '120px' }}>Recipient</th>
+                      <th style={{ width: '150px' }}>Trigger Event</th>
+                      <th>Message Body</th>
+                      <th style={{ width: '100px' }}>Status</th>
+                      <th style={{ width: '110px' }}>Delivery</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...Array(5)].map((_, i) => (
+                      <tr key={i}>
+                        <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                        <td><div className="skeleton-text" style={{ width: '100px', height: '18px' }}></div></td>
+                        <td><div className="skeleton-text" style={{ width: '110px', height: '18px' }}></div></td>
+                        <td><div className="skeleton-text" style={{ width: '250px', height: '18px' }}></div></td>
+                        <td><div className="skeleton-text" style={{ width: '60px', height: '18px' }}></div></td>
+                        <td><div className="skeleton-text" style={{ width: '70px', height: '18px' }}></div></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : error ? (
-              <div className="alert alert-danger" style={{ margin: '1rem 0' }}>{error}</div>
+              <div className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: 'var(--radius-sm)', margin: '1rem 0' }}>
+                <span>{error}</span>
+                <button 
+                  onClick={fetchLogs} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                >
+                  <RefreshCw size={12} />
+                  <span>Retry</span>
+                </button>
+              </div>
             ) : logs.length === 0 ? (
               <div style={styles.noData}>No SMS logs match current criteria.</div>
             ) : (
@@ -244,7 +287,7 @@ export default function SmsManagement() {
                       </tr>
                     </thead>
                     <tbody>
-                      {logs.slice((currentPage - 1) * 8, currentPage * 8).map((log) => (
+                      {paginatedLogs.map((log) => (
                         <tr key={log.id}>
                           <td style={styles.dateCell}>{formatDate(log.sentAt)}</td>
                           <td style={styles.phoneCell}>
@@ -260,14 +303,10 @@ export default function SmsManagement() {
                           </td>
                           <td style={styles.messageCell}>{log.message}</td>
                           <td>
-                            <span className={`badge ${log.status === 'SENT' || log.status === 'SUCCESS' ? 'badge-success' : 'badge-danger'}`}>
-                              {log.status}
-                            </span>
+                            <StatusBadge status={log.status} />
                           </td>
                           <td>
-                            <span className={`badge ${log.deliveryStatus === 'DELIVERED' ? 'badge-success' : log.deliveryStatus === 'PENDING' ? 'badge-warning' : 'badge-danger'}`}>
-                              {log.deliveryStatus || 'DELIVERED'}
-                            </span>
+                            <StatusBadge status={log.deliveryStatus || 'DELIVERED'} />
                           </td>
                         </tr>
                       ))}
@@ -275,7 +314,7 @@ export default function SmsManagement() {
                   </table>
                 </div>
 
-                {Math.ceil(logs.length / 8) > 1 && (
+                {totalPages > 1 && (
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                     <button 
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -286,11 +325,11 @@ export default function SmsManagement() {
                       Previous
                     </button>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
-                      Page {currentPage} of {Math.ceil(logs.length / 8)}
+                      Page {currentPage} of {totalPages}
                     </span>
                     <button 
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(logs.length / 8)))}
-                      disabled={currentPage === Math.ceil(logs.length / 8)}
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
                       className="btn btn-secondary"
                       style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
                     >
@@ -303,51 +342,55 @@ export default function SmsManagement() {
           </div>
         </div>
 
-        {/* Right Side: Broadcast alerting panel */}
+        {/* Right Side: broadcast dispatch */}
         <div style={styles.broadcastPanel}>
-          <div className="glass-card" style={{ padding: '1.25rem' }}>
-            <h3 style={{ marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-              📢 Broadcast Alerts Dispatcher
+          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+            <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Send size={18} style={{ color: 'var(--accent-green)' }} />
+              <span>Cooperative SMS Broadcast</span>
             </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-              Sends real-time SMS announcements (weather bulletins, subsidy information, local training events) to all **VERIFIED** and **ACTIVE** farmers in the system.
+
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+              Compose and send mass notifications. This dispatches standard SMS updates to all registered and verified cooperative farmers in real time.
             </p>
+
+            {broadcastResult && (
+              <div 
+                className={broadcastResult.success ? 'badge-success' : 'badge-danger'}
+                style={{ padding: '0.75rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontSize: '0.85rem' }}
+              >
+                {broadcastResult.message}
+              </div>
+            )}
 
             <form onSubmit={handleBroadcastSubmit}>
               <div className="form-group">
-                <label className="form-label" htmlFor="broadcastMsg">Alert Message Content</label>
+                <label className="form-label" htmlFor="broadcastMsg">Alert / Announcement Message</label>
                 <textarea
                   id="broadcastMsg"
                   required
-                  rows={6}
-                  placeholder="Enter SMS alert message..."
+                  rows={5}
                   className="form-control"
                   style={styles.textarea}
+                  placeholder="e.g. Dear farmers, the fertilizer subsidy distribution starts tomorrow at the Nyeri Depot. Please bring your national IDs."
                   value={broadcastMsg}
                   onChange={(e) => setBroadcastMsg(e.target.value)}
-                  maxLength={480}
-                  disabled={sendingBroadcast}
+                  maxLength={400}
                 />
                 <div style={styles.charCount}>
-                  <span>Character count: {broadcastMsg.length}/480</span>
-                  <span>(~{Math.ceil(broadcastMsg.length / 160)} SMS units)</span>
+                  <span>Max characters: 400</span>
+                  <span>{broadcastMsg.length}/400</span>
                 </div>
               </div>
 
-              {broadcastResult && (
-                <div className={`alert ${broadcastResult.success ? 'alert-success' : 'alert-danger'}`} style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
-                  {broadcastResult.message}
-                </div>
-              )}
-
-              <button
-                type="submit"
+              <button 
+                type="submit" 
+                disabled={sendingBroadcast || !broadcastMsg.trim()} 
                 className="btn btn-primary"
-                style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '0.5rem', height: '42px' }}
-                disabled={sendingBroadcast || !broadcastMsg.trim()}
+                style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
               >
-                <Send size={16} />
-                <span>{sendingBroadcast ? 'Dispatching Broadcast...' : 'Dispatch Broadcast Alert'}</span>
+                {sendingBroadcast ? <RefreshCw className="spin" size={16} /> : <Send size={16} />}
+                <span>{sendingBroadcast ? 'Sending Broadcast...' : 'Dispatch Alert to Farmers'}</span>
               </button>
             </form>
           </div>
@@ -359,49 +402,48 @@ export default function SmsManagement() {
 
 const styles = {
   container: {
-    padding: '1.5rem',
-    maxWidth: '1200px',
-    margin: '0 auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2rem',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '1.5rem',
-    textAlign: 'left',
   },
   statsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: '1.25rem',
-    marginBottom: '1.5rem',
-    textAlign: 'left',
   },
   statCard: {
-    padding: '1.25rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem',
+    padding: '1.25rem',
+    textAlign: 'left',
   },
   statHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: '0.75rem',
+    fontWeight: '600',
   },
   statNum: {
+    fontFamily: 'var(--font-family-heading)',
     fontSize: '2rem',
     fontWeight: '800',
-    fontFamily: 'var(--font-family-heading)',
-    lineHeight: '1.1',
+    lineHeight: '1',
+    marginBottom: '0.5rem',
   },
   contentLayout: {
     display: 'grid',
-    gridTemplateColumns: '1fr 340px',
+    gridTemplateColumns: '2fr 1fr',
     gap: '1.5rem',
     alignItems: 'start',
   },
   logAuditor: {
-    minWidth: 0, // prevents grid blowout
+    minWidth: 0,
   },
   broadcastPanel: {
     textAlign: 'left',
@@ -431,12 +473,6 @@ const styles = {
   selectInput: {
     paddingLeft: '2rem',
     height: '38px',
-  },
-  centerSpinner: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '3rem 0',
   },
   noData: {
     padding: '3rem',
@@ -477,3 +513,4 @@ const styles = {
     marginTop: '0.35rem',
   },
 };
+export { styles };

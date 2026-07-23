@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, DollarSign, CheckCircle, AlertTriangle } from 'lucide-react';
+import { CreditCard, DollarSign, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDate } from '../../services/utils';
+import StatusBadge from '../../components/StatusBadge';
 
 export default function PaymentAudit() {
   const [payments, setPayments] = useState([]);
@@ -17,6 +19,7 @@ export default function PaymentAudit() {
 
   const fetchPayments = async () => {
     setLoading(true);
+    setError('');
     try {
       const data = await api.admin.getPayments(status || undefined);
       setPayments(data || []);
@@ -29,6 +32,9 @@ export default function PaymentAudit() {
     }
   };
 
+  const totalPages = Math.ceil(payments.length / 8) || 1;
+  const paginated = payments.slice((currentPage - 1) * 8, currentPage * 8);
+
   return (
     <div>
       <div style={styles.header}>
@@ -37,8 +43,19 @@ export default function PaymentAudit() {
       </div>
 
       {error && (
-        <div className="badge-danger" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
-          {error}
+        <div className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+          </div>
+          <button 
+            onClick={fetchPayments} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
@@ -63,12 +80,44 @@ export default function PaymentAudit() {
 
       <div className="glass-panel" style={{ padding: '2rem' }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <h3>Querying payment database...</h3>
+          <div className="table-responsive">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Payment ID</th>
+                  <th>Order Ref</th>
+                  <th>M-Pesa Receipt</th>
+                  <th>Amount</th>
+                  <th>Payer Phone</th>
+                  <th>Checkout Request ID</th>
+                  <th>Merchant Request ID</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Time Paid</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton-text" style={{ width: '40px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '70px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '90px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '130px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '70px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : payments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-            <p>No payments recorded matching filters.</p>
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+            <CreditCard size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }} />
+            <p style={{ fontWeight: '600' }}>No payments recorded matching filters.</p>
           </div>
         ) : (
           <div>
@@ -89,44 +138,37 @@ export default function PaymentAudit() {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.slice((currentPage - 1) * 8, currentPage * 8).map((p) => {
-                    let statusBadge = 'badge-warning';
-                    if (p.status === 'SUCCESS') statusBadge = 'badge-success';
-                    if (p.status === 'FAILED') statusBadge = 'badge-danger';
-                    if (p.status === 'CANCELLED') statusBadge = 'badge-danger';
-
-                    return (
-                      <tr key={p.id}>
-                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{p.id}</td>
-                        <td>
-                          <span style={{ fontWeight: '600' }}>
-                            {p.buyerRequestId ? `Request #${p.buyerRequestId}` : 'N/A'}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                          {p.mpesaReceiptNumber || 'N/A'}
-                        </td>
-                        <td style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>
-                          KES {p.amount?.toLocaleString()}
-                        </td>
-                        <td>{p.phoneNumber || 'N/A'}</td>
-                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.checkoutRequestId || 'N/A'}</td>
-                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.merchantRequestId || 'N/A'}</td>
-                        <td>{p.transactionDesc || 'M-Pesa transaction'}</td>
-                        <td>
-                          <span className={`badge ${statusBadge}`}>{p.status}</span>
-                        </td>
-                        <td>
-                          {p.paidAt ? new Date(p.paidAt).toLocaleString() : new Date(p.createdAt).toLocaleString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {paginated.map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{p.id}</td>
+                      <td>
+                        <span style={{ fontWeight: '600' }}>
+                          {p.buyerRequestId ? `Request #${p.buyerRequestId}` : 'N/A'}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                        {p.mpesaReceiptNumber || 'N/A'}
+                      </td>
+                      <td style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>
+                        KES {p.amount?.toLocaleString()}
+                      </td>
+                      <td>{p.phoneNumber || 'N/A'}</td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.checkoutRequestId || 'N/A'}</td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.merchantRequestId || 'N/A'}</td>
+                      <td>{p.transactionDesc || 'M-Pesa transaction'}</td>
+                      <td>
+                        <StatusBadge status={p.status} />
+                      </td>
+                      <td>
+                        {formatDate(p.paidAt || p.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            {Math.ceil(payments.length / 8) > 1 && (
+            {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                 <button 
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -137,11 +179,11 @@ export default function PaymentAudit() {
                   Previous
                 </button>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
-                  Page {currentPage} of {Math.ceil(payments.length / 8)}
+                  Page {currentPage} of {totalPages}
                 </span>
                 <button 
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(payments.length / 8)))}
-                  disabled={currentPage === Math.ceil(payments.length / 8)}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
                   className="btn btn-secondary"
                   style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
                 >

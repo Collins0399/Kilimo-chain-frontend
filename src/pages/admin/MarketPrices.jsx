@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, ShieldAlert, Sparkles, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatDate } from '../../services/utils';
 
 export default function MarketPrices() {
   const [prices, setPrices] = useState([]);
@@ -17,6 +18,8 @@ export default function MarketPrices() {
   const [pricePerKg, setPricePerKg] = useState('');
   const [location, setLocation] = useState('');
   const [trend, setTrend] = useState('STABLE'); // STABLE, UPWARD, DOWNWARD
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchPrices();
@@ -24,6 +27,7 @@ export default function MarketPrices() {
 
   const fetchPrices = async () => {
     setLoading(true);
+    setError('');
     try {
       const data = await api.marketPrices.getAll();
       setPrices(data || []);
@@ -60,7 +64,7 @@ export default function MarketPrices() {
       setError('Please fill in all required fields.');
       return;
     }
-
+    setSaving(true);
     try {
       const payload = {
         crop_name: cropName,
@@ -74,6 +78,8 @@ export default function MarketPrices() {
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to create market price listing.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -83,7 +89,7 @@ export default function MarketPrices() {
       setError('Please fill in all required fields.');
       return;
     }
-
+    setSaving(true);
     try {
       const payload = {
         crop_name: cropName,
@@ -97,6 +103,8 @@ export default function MarketPrices() {
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to update market price listing.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -104,12 +112,16 @@ export default function MarketPrices() {
     if (!window.confirm('Are you sure you want to delete this market price listing? Farmers will no longer see it via SMS.')) {
       return;
     }
+    setDeletingId(id);
+    setError('');
     try {
       await api.marketPrices.delete(id);
       fetchPrices();
     } catch (err) {
       console.error(err);
       setError('Failed to delete market price.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -127,19 +139,54 @@ export default function MarketPrices() {
       </div>
 
       {error && !showAddModal && !showEditModal && (
-        <div className="badge-danger" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
-          {error}
+        <div className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldAlert size={16} />
+            <span>{error}</span>
+          </div>
+          <button 
+            onClick={fetchPrices} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
       <div className="glass-panel" style={{ padding: '2rem' }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <h3>Querying price indices...</h3>
+          <div className="table-responsive">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Crop</th>
+                  <th>Official Price</th>
+                  <th>Location (County)</th>
+                  <th>Price Trend</th>
+                  <th>Last Updated</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(4)].map((_, i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '100px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '90px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '130px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px', margin: '0 auto' }}></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : prices.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <p>No crop prices published. Click "Publish Price" to add one.</p>
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+            <p style={{ fontWeight: '600' }}>No crop prices published.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Click "Publish Price" to publish official prices.</p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -158,10 +205,10 @@ export default function MarketPrices() {
                 {prices.map((p) => {
                   let trendColor = 'var(--text-primary)';
                   let trendIcon = <RefreshCw size={16} />;
-                  if (p.trend === 'UPWARD') {
+                  if (p.trend === 'UPWARD' || p.trend === 'UP') {
                     trendColor = 'var(--accent-green)';
                     trendIcon = <TrendingUp size={16} />;
-                  } else if (p.trend === 'DOWNWARD') {
+                  } else if (p.trend === 'DOWNWARD' || p.trend === 'DOWN') {
                     trendColor = 'var(--accent-red)';
                     trendIcon = <TrendingDown size={16} />;
                   }
@@ -177,23 +224,26 @@ export default function MarketPrices() {
                           <span>{p.trend}</span>
                         </div>
                       </td>
-                      <td>{p.updated_at ? new Date(p.updated_at).toLocaleString() : 'Recent'}</td>
+                      <td>{p.updated_at ? formatDate(p.updated_at) : 'Recent'}</td>
                       <td style={styles.actionCell}>
                         <button
                           onClick={() => handleOpenEditModal(p)}
                           className="btn btn-secondary"
                           style={styles.tableBtn}
                           title="Edit Price"
+                          aria-label="Edit Price"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(p.id)}
+                          disabled={deletingId === p.id}
                           className="btn btn-danger"
-                          style={styles.tableBtn}
+                          style={{ ...styles.tableBtn, opacity: deletingId === p.id ? 0.5 : 1 }}
                           title="Delete Price"
+                          aria-label="Delete Price"
                         >
-                          <Trash2 size={14} />
+                          {deletingId === p.id ? <RefreshCw className="spin" size={14} /> : <Trash2 size={14} />}
                         </button>
                       </td>
                     </tr>
@@ -208,9 +258,9 @@ export default function MarketPrices() {
       {/* Add Price Modal */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ maxWidth: '450px' }}>
+          <div className="modal-content glass-panel" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h2>Publish Crop Price</h2>
+              <h2>Publish Official Price</h2>
               <button onClick={() => setShowAddModal(false)} className="modal-close">✕</button>
             </div>
 
@@ -223,56 +273,56 @@ export default function MarketPrices() {
 
             <form onSubmit={handleSaveAdd}>
               <div className="form-group">
-                <label className="form-label" htmlFor="aCrop">Crop Name</label>
+                <label className="form-label" htmlFor="cropName">Crop Name</label>
                 <input
-                  id="aCrop"
+                  id="cropName"
                   type="text"
                   required
                   className="form-control"
-                  placeholder="e.g. Maize, Beans..."
+                  placeholder="e.g. Maize, Beans, Rice"
                   value={cropName}
                   onChange={(e) => setCropName(e.target.value)}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="aPrice">Price per KG (KES)</label>
+                <label className="form-label" htmlFor="pricePerKg">Official Price (KES per KG)</label>
                 <input
-                  id="aPrice"
+                  id="pricePerKg"
                   type="number"
                   required
                   min="1"
                   className="form-control"
-                  placeholder="e.g. 55"
+                  placeholder="e.g. 60"
                   value={pricePerKg}
                   onChange={(e) => setPricePerKg(e.target.value)}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="aLoc">County (Target Market)</label>
+                <label className="form-label" htmlFor="location">County (Location)</label>
                 <input
-                  id="aLoc"
+                  id="location"
                   type="text"
                   required
                   className="form-control"
-                  placeholder="e.g. Nyeri"
+                  placeholder="e.g. Nyeri, Meru"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="aTrend">Market Trend</label>
+                <label className="form-label" htmlFor="trend">Price Trend</label>
                 <select
-                  id="aTrend"
+                  id="trend"
                   className="form-control"
                   value={trend}
                   onChange={(e) => setTrend(e.target.value)}
                 >
-                  <option value="STABLE">Stable ➡️</option>
-                  <option value="UPWARD">Upward 📈</option>
-                  <option value="DOWNWARD">Downward 📉</option>
+                  <option value="STABLE">STABLE</option>
+                  <option value="UPWARD">UPWARD</option>
+                  <option value="DOWNWARD">DOWNWARD</option>
                 </select>
               </div>
 
@@ -280,8 +330,8 @@ export default function MarketPrices() {
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Publish Price
+                <button type="submit" disabled={saving} className="btn btn-primary">
+                  {saving ? 'Publishing...' : 'Publish'}
                 </button>
               </div>
             </form>
@@ -292,9 +342,9 @@ export default function MarketPrices() {
       {/* Edit Price Modal */}
       {showEditModal && (
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ maxWidth: '450px' }}>
+          <div className="modal-content glass-panel" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h2>Modify Crop Price</h2>
+              <h2>Edit Market Price</h2>
               <button onClick={() => setShowEditModal(false)} className="modal-close">✕</button>
             </div>
 
@@ -307,56 +357,56 @@ export default function MarketPrices() {
 
             <form onSubmit={handleSaveEdit}>
               <div className="form-group">
-                <label className="form-label" htmlFor="eCrop">Crop Name</label>
+                <label className="form-label" htmlFor="cropName">Crop Name</label>
                 <input
-                  id="eCrop"
+                  id="cropName"
                   type="text"
                   required
                   className="form-control"
-                  placeholder="e.g. Maize, Beans..."
+                  placeholder="e.g. Maize, Beans, Rice"
                   value={cropName}
                   onChange={(e) => setCropName(e.target.value)}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="ePrice">Price per KG (KES)</label>
+                <label className="form-label" htmlFor="pricePerKg">Official Price (KES per KG)</label>
                 <input
-                  id="ePrice"
+                  id="pricePerKg"
                   type="number"
                   required
                   min="1"
                   className="form-control"
-                  placeholder="e.g. 55"
+                  placeholder="e.g. 60"
                   value={pricePerKg}
                   onChange={(e) => setPricePerKg(e.target.value)}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="eLoc">County (Target Market)</label>
+                <label className="form-label" htmlFor="location">County (Location)</label>
                 <input
-                  id="eLoc"
+                  id="location"
                   type="text"
                   required
                   className="form-control"
-                  placeholder="e.g. Nyeri"
+                  placeholder="e.g. Nyeri, Meru"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="eTrend">Market Trend</label>
+                <label className="form-label" htmlFor="trend">Price Trend</label>
                 <select
-                  id="eTrend"
+                  id="trend"
                   className="form-control"
                   value={trend}
                   onChange={(e) => setTrend(e.target.value)}
                 >
-                  <option value="STABLE">Stable ➡️</option>
-                  <option value="UPWARD">Upward 📈</option>
-                  <option value="DOWNWARD">Downward 📉</option>
+                  <option value="STABLE">STABLE</option>
+                  <option value="UPWARD">UPWARD</option>
+                  <option value="DOWNWARD">DOWNWARD</option>
                 </select>
               </div>
 
@@ -364,8 +414,8 @@ export default function MarketPrices() {
                 <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Update Price
+                <button type="submit" disabled={saving} className="btn btn-primary">
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -401,6 +451,9 @@ const styles = {
     padding: '0.4rem',
     width: '32px',
     height: '32px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalError: {
     display: 'flex',

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Search, ShieldCheck, ShieldX, UserCheck, UserX, UserPlus, AlertCircle, Check } from 'lucide-react';
+import { Search, ShieldCheck, ShieldX, UserCheck, UserX, UserPlus, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
+import StatusBadge from '../../components/StatusBadge';
 
 export default function FarmerDirectory() {
   const [farmers, setFarmers] = useState([]);
@@ -23,11 +24,12 @@ export default function FarmerDirectory() {
   const [village, setVillage] = useState('');
   const [nationalId, setNationalId] = useState('');
   const [primaryCrop, setPrimaryCrop] = useState('');
-  const [password, setPassword] = useState('password123'); // Default password for simplicity
+  const [password, setPassword] = useState('');
 
   const [modalError, setModalError] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
     fetchFarmers();
@@ -35,6 +37,7 @@ export default function FarmerDirectory() {
 
   const fetchFarmers = async () => {
     setLoading(true);
+    setError('');
     try {
       const data = await api.admin.getFarmers({ name, phone, county, crop });
       setFarmers(data || []);
@@ -47,22 +50,28 @@ export default function FarmerDirectory() {
   };
 
   const handleVerify = async (id, currentStatus) => {
+    setProcessingId(id);
     try {
       await api.admin.verifyFarmer(id, !currentStatus);
-      fetchFarmers();
+      await fetchFarmers();
     } catch (e) {
       console.error(e);
       setError('Failed to change verification status.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleToggleActive = async (id, currentStatus) => {
+    setProcessingId(id);
     try {
       await api.admin.toggleFarmerActive(id, !currentStatus);
-      fetchFarmers();
+      await fetchFarmers();
     } catch (e) {
       console.error(e);
       setError('Failed to toggle farmer active status.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -76,7 +85,8 @@ export default function FarmerDirectory() {
     setVillage('');
     setNationalId('');
     setPrimaryCrop('');
-    setPassword('password123');
+    const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+    setPassword(`KILIMO-${randomHex}`);
     setModalError('');
     setModalSuccess('');
   };
@@ -146,8 +156,16 @@ export default function FarmerDirectory() {
       </div>
 
       {error && (
-        <div className="badge-danger" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem' }}>
-          {error}
+        <div className="badge-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem' }}>
+          <span>{error}</span>
+          <button 
+            onClick={fetchFarmers} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
@@ -197,12 +215,42 @@ export default function FarmerDirectory() {
 
       <div className="glass-panel" style={{ padding: '2rem' }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <h3>Querying farmer records...</h3>
+          <div className="table-responsive">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Farmer ID</th>
+                  <th>Name</th>
+                  <th>Phone Number</th>
+                  <th>Location (County)</th>
+                  <th>Primary Crop</th>
+                  <th>National ID</th>
+                  <th>Verified</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton-text" style={{ width: '60px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '120px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '100px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '140px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '90px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px' }}></div></td>
+                    <td><div className="skeleton-text" style={{ width: '80px', height: '18px', margin: '0 auto' }}></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : farmers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <p>No farmers match search criteria.</p>
+          <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+            <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>No farmers found.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Try refining your search terms or add a new farmer above.</p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -232,31 +280,31 @@ export default function FarmerDirectory() {
                     </td>
                     <td>{f.nationalId}</td>
                     <td>
-                      <span className={`badge ${f.verified ? 'badge-success' : 'badge-danger'}`}>
-                        {f.verified ? 'VERIFIED' : 'NOT VERIFIED'}
-                      </span>
+                      <StatusBadge status={f.verified ? 'VERIFIED' : 'UNVERIFIED'} />
                     </td>
                     <td>
-                      <span className={`badge ${f.active ? 'badge-success' : 'badge-danger'}`}>
-                        {f.active ? 'ACTIVE' : 'INACTIVE'}
-                      </span>
+                      <StatusBadge status={f.active ? 'ACTIVE' : 'INACTIVE'} />
                     </td>
                     <td style={styles.actionCell}>
                       <button
                         onClick={() => handleVerify(f.id, f.verified)}
+                        disabled={processingId === f.id}
                         className={`btn ${f.verified ? 'btn-outline' : 'btn-primary'}`}
-                        style={styles.tableBtn}
+                        style={{ ...styles.tableBtn, opacity: processingId === f.id ? 0.5 : 1 }}
                         title={f.verified ? "Revoke Verification" : "Verify Farmer"}
+                        aria-label={f.verified ? "Revoke Verification" : "Verify Farmer"}
                       >
-                        {f.verified ? <ShieldX size={16} /> : <ShieldCheck size={16} />}
+                        {processingId === f.id ? <RefreshCw className="spin" size={16} /> : (f.verified ? <ShieldX size={16} /> : <ShieldCheck size={16} />)}
                       </button>
                       <button
                         onClick={() => handleToggleActive(f.id, f.active)}
+                        disabled={processingId === f.id}
                         className="btn btn-secondary"
-                        style={styles.tableBtn}
+                        style={{ ...styles.tableBtn, opacity: processingId === f.id ? 0.5 : 1 }}
                         title={f.active ? "Deactivate Account" : "Activate Account"}
+                        aria-label={f.active ? "Deactivate Account" : "Activate Account"}
                       >
-                        {f.active ? <UserX size={16} /> : <UserCheck size={16} />}
+                        {processingId === f.id ? <RefreshCw className="spin" size={16} /> : (f.active ? <UserX size={16} /> : <UserCheck size={16} />)}
                       </button>
                     </td>
                   </tr>
@@ -291,7 +339,7 @@ export default function FarmerDirectory() {
             )}
 
             <form onSubmit={handleSubmitOnboarding}>
-              <div style={styles.modalGrid}>
+              <div className="modal-grid-2col">
                 <div className="form-group">
                   <label className="form-label" htmlFor="fName">Full Name</label>
                   <input
@@ -316,6 +364,9 @@ export default function FarmerDirectory() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                   />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    Must be 2547XXXXXXXX (12 digits)
+                  </span>
                 </div>
 
                 <div className="form-group">
@@ -396,16 +447,18 @@ export default function FarmerDirectory() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="fPass">Account Password</label>
+                  <label className="form-label" htmlFor="fPass">Generated Password (One-Time Token)</label>
                   <input
                     id="fPass"
                     type="text"
-                    required
+                    readOnly
                     className="form-control"
-                    placeholder="password123"
+                    style={{ background: 'var(--bg-secondary)', fontWeight: 'bold', color: 'var(--accent-green)' }}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
                   />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    Give this password to the farmer. It is server-generated securely.
+                  </span>
                 </div>
               </div>
 
@@ -470,6 +523,9 @@ const styles = {
     padding: '0.4rem',
     width: '32px',
     height: '32px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalGrid: {
     display: 'grid',

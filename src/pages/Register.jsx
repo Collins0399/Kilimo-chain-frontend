@@ -109,7 +109,7 @@ export default function Register() {
                 onChange={(e) => setPhoneNumber(e.target.value)}
               />
             </div>
-            <span style={styles.inputHelp}>Must start with 254 </span>
+            <span style={styles.inputHelp}>Must be 2547XXXXXXXX (12 digits)</span>
           </div>
 
           <div className="form-group">

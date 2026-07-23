@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { LogOut, User, Bell, Smartphone } from 'lucide-react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const currentUser = api.auth.getCurrentUser();
+  const { user: currentUser, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -24,10 +25,10 @@ export default function Navbar() {
       const interval = setInterval(fetchNotifications, 10000);
       return () => clearInterval(interval);
     }
-  }, []);
+  }, [currentUser]);
 
   const handleLogout = () => {
-    api.auth.logout();
+    logout();
     navigate('/login');
   };
 

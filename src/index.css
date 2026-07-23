@@ -1006,3 +1006,94 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
   }
 }
+
+/* ==========================================
+   ANIMATED SKELETON LOADERS
+   ========================================== */
+@keyframes skeleton-loading {
+  0% {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    background-color: rgba(0, 0, 0, 0.12);
+  }
+  100% {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.skeleton-text {
+  animation: skeleton-loading 1.5s infinite ease-in-out;
+  height: 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.skeleton-rect {
+  animation: skeleton-loading 1.5s infinite ease-in-out;
+  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================
+   RESPONSIVE LAYOUT GRIDS
+   ========================================== */
+.sms-content-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 992px) {
+  .sms-content-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.simulator-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 3rem;
+  align-items: start;
+  max-width: 1100px;
+  width: 90%;
+  margin: 0 auto;
+  z-index: 2;
+}
+
+@media (max-width: 992px) {
+  .simulator-layout-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+    width: 100% !important;
+  }
+}
+
+.modal-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 576px) {
+  .modal-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+

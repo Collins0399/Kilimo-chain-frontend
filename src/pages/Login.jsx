@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Key, Mail, ShieldAlert, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import LandingNavbar from '../components/LandingNavbar';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +19,7 @@ export default function Login() {
     setError('');
 
     try {
-      const data = await api.auth.login(email, password);
+      const data = await login(email, password);
       if (data.role === 'COOPERATIVE_ADMIN') {
         navigate('/admin/dashboard');
       } else {

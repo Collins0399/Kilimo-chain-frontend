@@ -164,7 +164,7 @@ export default function SmsUssdSimulator() {
         </Link>
       </header>
 
-      <div style={styles.container}>
+      <div className="simulator-layout-grid">
         <div style={styles.infoPanel}>
           <h1 style={{ fontFamily: 'var(--font-family-heading)', marginBottom: '1rem', fontSize: '2rem' }}>
             Offline Gateway Simulator 📱
