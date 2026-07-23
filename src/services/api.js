@@ -154,6 +154,14 @@ export const api = {
       const params = queryParams(filters);
       return await request(`/api/admin/harvests${params}`);
     },
+    getHarvestById: async (id) => {
+      return await request(`/api/admin/harvests/${id}`);
+    },
+    deleteHarvest: async (id) => {
+      return await request(`/api/admin/harvests/${id}`, {
+        method: 'DELETE',
+      });
+    },
     getBuyerRequests: async (status) => {
       const params = queryParams({ status });
       return await request(`/api/admin/buyer-requests${params}`);

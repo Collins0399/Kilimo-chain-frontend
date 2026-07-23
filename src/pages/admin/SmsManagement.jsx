@@ -203,6 +203,7 @@ export default function SmsManagement() {
                   <option value="">All Trigger Events</option>
                   <option value="FARMER_REGISTRATION">Farmer Registration</option>
                   <option value="FARMER_VERIFICATION">Farmer Verification</option>
+                  <option value="HARVEST_RECORDED">Harvest Recorded</option>
                   <option value="PRICE_UPDATE">Market Price Updates</option>
                   <option value="PURCHASE_REQUEST">New Buyer Requests</option>
                   <option value="MPESA_PAYMENT">M-Pesa Payments</option>

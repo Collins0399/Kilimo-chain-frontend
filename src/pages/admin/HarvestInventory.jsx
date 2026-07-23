@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Search, MapPin, Tag, Box, Info } from 'lucide-react';
+import { Search, MapPin, Tag, Box, Info, Eye, Trash2, ShieldAlert } from 'lucide-react';
 import { api } from '../../services/api';
 
 export default function HarvestInventory() {
   const [harvests, setHarvests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Modals status
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedHarvest, setSelectedHarvest] = useState(null);
 
   // Filters
   const [farmer, setFarmer] = useState('');
@@ -30,6 +34,25 @@ export default function HarvestInventory() {
     }
   };
 
+  const handleView = (harvest) => {
+    setSelectedHarvest(harvest);
+    setError('');
+    setShowViewModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this harvest listing?")) {
+      setError('');
+      try {
+        await api.admin.deleteHarvest(id);
+        fetchHarvests();
+      } catch (err) {
+        console.error(err);
+        setError(err.message || 'Failed to delete harvest listing.');
+      }
+    }
+  };
+
   return (
     <div>
       <div style={styles.header}>
@@ -37,9 +60,10 @@ export default function HarvestInventory() {
         <p style={styles.subtitle}>Audit active agricultural stock listed by farmers via the SMS gateway.</p>
       </div>
 
-      {error && (
-        <div className="badge-danger" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
-          {error}
+      {error && !showViewModal && (
+        <div className="badge-danger" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <ShieldAlert size={16} />
+          <span>{error}</span>
         </div>
       )}
 
@@ -112,6 +136,7 @@ export default function HarvestInventory() {
                   <th>Unit Price</th>
                   <th>Listing Date</th>
                   <th>Status</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,6 +159,24 @@ export default function HarvestInventory() {
                       <td>
                         <span className={`badge ${badgeClass}`}>{h.status}</span>
                       </td>
+                      <td style={styles.actionCell}>
+                        <button
+                          onClick={() => handleView(h)}
+                          className="btn btn-secondary"
+                          style={styles.tableBtn}
+                          title="View Details"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(h.id)}
+                          className="btn btn-danger"
+                          style={styles.tableBtn}
+                          title="Delete Listing"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -142,6 +185,71 @@ export default function HarvestInventory() {
           </div>
         )}
       </div>
+
+      {/* View Harvest Details Modal */}
+      {showViewModal && selectedHarvest && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Harvest Details</h2>
+              <button onClick={() => setShowViewModal(false)} className="modal-close">✕</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.25rem', marginBottom: '1.25rem' }}>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Listing ID:</span>
+                <span style={styles.detailValue}>#{selectedHarvest.id}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Crop Name:</span>
+                <span style={{ ...styles.detailValue, fontWeight: '700' }}>{selectedHarvest.cropName}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Quantity Available:</span>
+                <span style={styles.detailValue}>{selectedHarvest.quantity} {selectedHarvest.unit || 'KG'}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Unit Price:</span>
+                <span style={{ ...styles.detailValue, color: 'var(--accent-gold)', fontWeight: '600' }}>KES {selectedHarvest.unitPrice?.toLocaleString() || 0}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Total Estimated Value:</span>
+                <span style={{ ...styles.detailValue, fontWeight: '600' }}>KES {((selectedHarvest.quantity || 0) * (selectedHarvest.unitPrice || 0))?.toLocaleString()}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Farmer / Producer:</span>
+                <span style={styles.detailValue}>{selectedHarvest.farmerName || 'N/A'}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Farmer Contact:</span>
+                <span style={styles.detailValue}>{selectedHarvest.farmerPhone || 'N/A'}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>County (Location):</span>
+                <span style={styles.detailValue}>📍 {selectedHarvest.location}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Listing Date:</span>
+                <span style={styles.detailValue}>{selectedHarvest.dateAdded ? new Date(selectedHarvest.dateAdded).toLocaleString() : 'N/A'}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Listing Status:</span>
+                <span style={styles.detailValue}>
+                  <span className={`badge ${selectedHarvest.status === 'SOLD' ? 'badge-danger' : 'badge-success'}`}>
+                    {selectedHarvest.status}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div style={styles.modalActions}>
+              <button onClick={() => setShowViewModal(false)} className="btn btn-secondary">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -178,6 +286,41 @@ const styles = {
     color: 'var(--text-muted)',
     textTransform: 'uppercase',
     fontWeight: '600',
+  },
+  actionCell: {
+    display: 'flex',
+    gap: '0.5rem',
+    justifyContent: 'center',
+  },
+  tableBtn: {
+    padding: '0.4rem',
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '0.65rem 0',
+    borderBottom: '1px solid var(--border-color)',
+  },
+  detailLabel: {
+    color: 'var(--text-muted)',
+    fontWeight: '500',
+  },
+  detailValue: {
+    color: 'var(--text-primary)',
+    fontWeight: '500',
+  },
+  modalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '1rem',
+    borderTop: '1px solid var(--border-color)',
+    paddingTop: '1.25rem',
+    marginTop: '1.5rem',
   },
 };
 export { styles };
